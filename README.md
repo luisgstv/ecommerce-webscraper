@@ -82,7 +82,7 @@ To use this project, you will need to follow these steps:
 1. **Clone this repository**:
 
 ```bash
-git clone repository
+git clone https://github.com/luisgstv/ecommerce-webscraper.git
 ```
 
 2. Install the required modules using the following command:
