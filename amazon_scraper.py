@@ -60,7 +60,7 @@ class AmazonScraper:
         
         try:
             self.total_pages = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, '.s-pagination-button'))
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, '.s-pagination-item'))
             )[-2].text
         except TimeoutException:
             print('Amazon: Error, trying again.')
