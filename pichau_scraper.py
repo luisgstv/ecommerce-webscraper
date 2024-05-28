@@ -2,6 +2,7 @@ from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 from functions import remove_accents, verify_title, skip_words, create_df
 import re
+from playwright_stealth import stealth_sync
     
 class PichauScraper:
     def __init__(self, update_callback=None, export_options=None):
@@ -9,8 +10,9 @@ class PichauScraper:
         self.export_options = export_options
 
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(headless=True, slow_mo=300)
-        self.page = self.browser.new_page(user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0')
+        self.browser = self.playwright.firefox.launch(headless=True, slow_mo=300)
+        self.page = self.browser.new_page()
+        stealth_sync(self.page)
 
     def run(self, search):
         self.search = search
@@ -30,15 +32,13 @@ class PichauScraper:
             else:
                 break
         
-        create_df(self.data, self.search, 'Pichau', columns=['Title', 'Price', 'URL'], export_options=self.export_options)
+        data_frame = create_df(self.data, self.search, 'Pichau', columns=['Title', 'Price', 'URL'], export_options=self.export_options)
         self.playwright.stop()
+        return data_frame
 
     def search_product(self):
-        self.page.goto('https://www.pichau.com.br/')
-        self.page.wait_for_load_state()
-        search_input = 'input.MuiInputBase-input'
-        self.page.fill(search_input, self.search)
-        self.page.press(search_input, 'Enter')
+        url_search = self.search.replace(' ', '%20')
+        self.page.goto(f'https://www.pichau.com.br/search?q={url_search}')
         self.total_pages = BeautifulSoup(self.page.inner_html('ul.MuiPagination-ul'), 'html.parser').find_all('button')[-2].text
 
     def scrape(self):

@@ -3,6 +3,9 @@ from pichau_scraper import PichauScraper
 from kabum_scraper import KabumScraper
 import customtkinter as ctk
 import threading
+import pandas as pd
+import queue
+from functions import sort_df
 
 class ProductPriceFinder(ctk.CTk):
     def __init__(self):
@@ -76,28 +79,54 @@ class ProductPriceFinder(ctk.CTk):
             self.kabum_progress.set(0)
             self.pichau_progress.set(0)
 
-            export_options = {
+            self.results_queue = queue.Queue()
+            self.results = {}
+            self.active_scrapers = 0
+
+            self.export_options = {
                 'csv': self.csv_var.get(),
                 'excel': self.excel_var.get()
             }
 
             if 'Amazon: On' in self.amazon_switch_var.get():
-                self.amazon = threading.Thread(target=lambda: self.run_scraper(AmazonScraper, 'Amazon', search, self.amazon_progress, export_options), daemon=True)
+                self.active_scrapers += 1
+                self.amazon = threading.Thread(target=lambda: self.run_scraper(AmazonScraper, 'Amazon', search, self.amazon_progress, self.export_options), daemon=True)
                 self.amazon.start()
                 self.update_status('Amazon', 'Running')
             if 'Kabum: On' in self.kabum_switch_var.get():
-                self.kabum = threading.Thread(target=lambda: self.run_scraper(KabumScraper, 'Kabum', search, self.kabum_progress, export_options), daemon=True)
+                self.active_scrapers += 1
+                self.kabum = threading.Thread(target=lambda: self.run_scraper(KabumScraper, 'Kabum', search, self.kabum_progress, self.export_options), daemon=True)
                 self.kabum.start()
                 self.update_status('Kabum', 'Running')
             if 'Pichau: On' in self.pichau_switch_var.get():
-                self.pichau = threading.Thread(target=lambda: self.run_scraper(PichauScraper, 'Pichau', search, self.pichau_progress, export_options), daemon=True)
+                self.active_scrapers += 1
+                self.pichau = threading.Thread(target=lambda: self.run_scraper(PichauScraper, 'Pichau', search, self.pichau_progress, self.export_options), daemon=True)
                 self.pichau.start()
                 self.update_status('Pichau', 'Running')
 
+            self.check_queue()
+
     def run_scraper(self, scraper_class, name, search, progress_bar, export_options):
         scraper = scraper_class(update_callback=lambda page, total: self.update_progress(name, page, total, progress_bar), export_options=export_options)
-        scraper.run(search)
+        data = scraper.run(search)
+        self.results_queue.put((name, data))
         self.update_status(name, 'Completed')
+
+    def check_queue(self):
+        try:
+            while True:
+                name, data = self.results_queue.get_nowait()
+                self.results[name] = data
+
+                if len(self.results) == self.active_scrapers: 
+                    lower_prices_df = self.compare_prices()
+                    if self.export_options['csv']:
+                        lower_prices_df.to_csv(f'{self.search_entry.get().capitalize()} - Lowest Prices.csv', index=False)
+                    if self.export_options['excel']:
+                        lower_prices_df.to_excel(f'{self.search_entry.get().capitalize()} - Lowest Prices.xlsx', index=False)
+                    break
+        except queue.Empty:
+            self.after(1000, self.check_queue)
 
     def update_status(self, scraper_name, status):
         if scraper_name == 'Amazon':
@@ -116,6 +145,16 @@ class ProductPriceFinder(ctk.CTk):
             self.kabum_status.configure(text=f'Kabum: Running (Page {page}/{total_pages})')
         elif scraper_name == 'Pichau':
             self.pichau_status.configure(text=f'Pichau: Running (Page {page}/{total_pages})')
+
+    def compare_prices(self):
+        lower_prices = []
+        for name, df in self.results.items():
+            df['Site'] = name
+            df = df[['Title', 'Price', 'Site', 'URL']].iloc[0]
+            lower_prices.append(df)
+        lower_prices_df = pd.DataFrame(lower_prices)
+        lower_prices_df = sort_df(lower_prices_df)
+        return lower_prices_df
 
 if __name__ == '__main__':
     app = ProductPriceFinder()

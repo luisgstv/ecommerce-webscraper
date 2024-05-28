@@ -14,7 +14,7 @@ class AmazonScraper:
         self.export_options = export_options
 
         self.options = webdriver.ChromeOptions()
-        self.options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0')
+        self.options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36')
         self.options.add_argument('--headless')
         self.options.add_argument('--log-level=3')
 
@@ -36,7 +36,8 @@ class AmazonScraper:
             else:
                 break
         
-        create_df(self.data, self.search, 'Amazon', columns=['Title', 'Price', 'ASIN', 'URL'], export_options=self.export_options)
+        data_frame = create_df(self.data, self.search, 'Amazon', columns=['Title', 'Price', 'ASIN', 'URL'], export_options=self.export_options)
+        return data_frame
 
     def search_product(self):
         self.driver = webdriver.Chrome(options=self.options)

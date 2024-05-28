@@ -27,11 +27,7 @@ def skip_words(title):
 
 def create_df(data, filename, website, columns, export_options):
     data_frame = pd.DataFrame(data, columns=columns)
-    data_frame['Price'] = data_frame['Price'].str.replace('R$', '').str.replace('.', '').str.replace(',', '.').astype(float)
-    data_frame = data_frame.sort_values(by='Price', ascending=True)
-    locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
-    data_frame['Price'] = data_frame['Price'].apply(lambda x: locale.currency(x, grouping=True))
-    data_frame = data_frame.drop_duplicates()
+    data_frame = sort_df(data_frame)
     if export_options == None:
         data_frame.to_csv(f'{filename.capitalize()} - {website}.csv', index=False)
     else:
@@ -39,3 +35,12 @@ def create_df(data, filename, website, columns, export_options):
             data_frame.to_csv(f'{filename.capitalize()} - {website}.csv', index=False)
         if export_options['excel']:
             data_frame.to_excel(f'{filename.capitalize()} - {website}.xlsx', index=False)
+    return data_frame
+
+def sort_df(data_frame):
+    data_frame['Price'] = data_frame['Price'].str.replace('R$', '').str.replace('.', '').str.replace(',', '.').astype(float)
+    data_frame = data_frame.sort_values(by='Price', ascending=True)
+    locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+    data_frame['Price'] = data_frame['Price'].apply(lambda x: locale.currency(x, grouping=True))
+    data_frame = data_frame.drop_duplicates()
+    return data_frame
